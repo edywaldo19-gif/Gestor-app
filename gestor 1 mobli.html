@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3E Clean - Gestão Profissional V17</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        :root { --primary: #1e293b; --secondary: #10b981; --accent: #3b82f6; --danger: #ef4444; --light: #f1f5f9; --warning: #f59e0b; }
+        body { font-family: -apple-system, sans-serif; background: var(--light); margin: 0; padding: 10px; padding-bottom: 30px; }
+        .container { max-width: 100%; margin: auto; background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .btn-privacidade { background: #475569; color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .nav-tabs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px; }
+        .btn-principal { grid-column: span 2; padding: 18px; font-size: 1.1em; background: var(--secondary); color: white; border: none; border-radius: 10px; font-weight: bold; }
+        .btn-tab { padding: 12px; background: #e2e8f0; border: none; border-radius: 8px; font-weight: 600; font-size: 0.85em; color: var(--primary); }
+        .financeiro-topo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
+        .card-fin { padding: 12px; border-radius: 10px; color: white; text-align: center; }
+        .bg-dia { background: #475569; } .bg-mes { background: #3b82f6; }
+        .card { border: 1px solid #e2e8f0; padding: 15px; border-radius: 10px; margin-bottom: 15px; background: #fff; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-weight: bold; margin-bottom: 4px; font-size: 0.85em; color: #64748b; }
+        input, select, textarea { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; box-sizing: border-box; background: #f8fafc; }
+        .scroll { overflow-x: auto; width: 100%; }
+        table { width: 100%; min-width: 450px; border-collapse: collapse; font-size: 0.85em; }
+        th { text-align: left; padding: 10px; background: #f1f5f9; border-bottom: 1px solid #ddd; }
+        td { padding: 12px 10px; border-bottom: 1px solid #f1f5f9; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.7em; font-weight: bold; color: white; text-transform: uppercase; }
+        .st-fechado { background: var(--secondary); } .st-aberto { background: var(--accent); } .st-enviado { background: var(--warning); }
+        .btn-acao { border: none; border-radius: 6px; padding: 8px; color: white; font-weight: bold; margin-right: 4px; font-size: 1em; }
+        .btn-wapp { background: #25d366; } .btn-edit { background: var(--accent); } .btn-del { background: var(--danger); } .btn-pdf { background: #64748b; }
+        .box-tapete { background: #eff6ff; padding: 10px; border-radius: 8px; border: 1px solid #bfdbfe; margin-bottom: 10px; }
+        .carrinho { background: #f8fafc; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 8px; margin: 10px 0; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-top">
+        <h3 style="margin:0; color:var(--primary)">3E Clean</h3>
+        <button id="btn-priv" class="btn-privacidade" onclick="togglePrivacidade()">👁️ Modo: Admin</button>
+    </div>
+
+    <div class="nav-tabs">
+        <button class="btn-principal" onclick="show('novo')">📝 NOVO ORÇAMENTO</button>
+        <button class="btn-tab" onclick="show('agenda')">📅 AGENDA</button>
+        <button class="btn-tab" onclick="show('clientes')">👥 CLIENTES</button>
+        <button id="tab-fin" class="btn-tab" onclick="show('financeiro')">💰 FINANÇAS</button>
+        <button class="btn-tab" onclick="show('backup')">⚙️ BACKUP</button>
+    </div>
+
+    <div id="dashboard-fin" class="financeiro-topo">
+        <div class="card-fin bg-dia">Hoje<br><b id="res-dia">R$ 0,00</b></div>
+        <div class="card-fin bg-mes">Mês Atual<br><b id="res-mes">R$ 0,00</b></div>
+    </div>
+
+    <section id="sec-agenda">
+        <h2>Serviços Confirmados</h2>
+        <div class="scroll"><table><thead><tr><th>Data</th><th>Cliente / Local</th><th>Total</th><th>Ações</th></tr></thead><tbody id="lista-agenda"></tbody></table></div>
+    </section>
+
+    <section id="sec-clientes" style="display:none">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h2>Clientes</h2>
+            <button class="btn-tab" style="background:var(--secondary); color:white;" onclick="abrirCadastroCliente()">+ NOVO</button>
+        </div>
+        <input type="text" id="busca-cli" placeholder="🔍 Buscar cliente..." class="form-group" oninput="render()">
+        <div class="scroll"><table><thead><tr><th>Cliente/Status</th><th>Ações</th></tr></thead><tbody id="lista-clientes"></tbody></table></div>
+    </section>
+
+    <section id="sec-novo" style="display:none">
+        <h2 id="titulo-orc">Orçamento / Agendamento</h2>
+        <input type="hidden" id="edit-id">
+        <div class="card"><label>Puxar Dados:</label><select id="sel-cliente" onchange="puxarDados()"></select></div>
+        <div class="card">
+            <input type="text" id="o-nome" placeholder="Nome" class="form-group">
+            <input type="tel" id="o-tel" placeholder="WhatsApp" class="form-group">
+            <input type="text" id="o-end" placeholder="Endereço Completo" class="form-group">
+            <div style="display:flex; gap:5px"><input type="date" id="o-data" style="flex:1"><input type="time" id="o-hora" style="flex:1"></div>
+            <textarea id="o-obs" placeholder="Observações..." style="margin-top:10px"></textarea>
+        </div>
+        <div class="card">
+            <label>Menu de Serviços Completo:</label>
+            <select id="o-serv" onchange="toggleTapete()" class="form-group">
+                <optgroup label="Estofados">
+                    <option value="Sofá Comum">Sofá Comum</option>
+                    <option value="Sofá Retrátil">Sofá Retrátil/Reclinável</option>
+                    <option value="Sofá de Canto (L)">Sofá de Canto (L)</option>
+                    <option value="Poltrona/Cadeira">Poltrona ou Cadeiras</option>
+                </optgroup>
+                <optgroup label="Colchões">
+                    <option value="Colchão Solteiro">Colchão Solteiro</option>
+                    <option value="Colchão Casal/Queen">Colchão Casal/Queen</option>
+                    <option value="Colchão King">Colchão King</option>
+                </optgroup>
+                <optgroup label="Automotivo / Bebê">
+                    <option value="Bancos Carro">Bancos Carro</option>
+                    <option value="Interna Completa">Interna Completa</option>
+                    <option value="Carrinho/Cadeirinha">Carrinho ou Cadeirinha</option>
+                </optgroup>
+                <optgroup label="Especiais">
+                    <option value="Tapete (M²)">Tapete (Cálculo M²)</option>
+                    <option value="Impermeabilização">Impermeabilização</option>
+                </optgroup>
+            </select>
+            <div id="box-tapete" class="box-tapete" style="display:none;">
+                <div style="display:flex; gap:5px"><input type="number" id="t-l" placeholder="L"><input type="number" id="t-c" placeholder="C"><input type="number" id="t-v" placeholder="R$M2" oninput="calcT()"></div>
+            </div>
+            <div style="display:flex; gap:5px; margin-top:10px;"><input type="number" id="o-qtd" value="1" style="width:60px"><input type="number" id="o-val" placeholder="R$ Unit."><button class="btn-principal" style="width:50px; padding:0" onclick="addIt()">+</button></div>
+            <div id="div-carrinho" class="carrinho"></div>
+            <h3 style="text-align:right">Total: R$ <span id="o-total">0.00</span></h3>
+            <select id="o-status" class="form-group"><option value="Aberto">Em Aberto</option><option value="Enviado">Enviado</option><option value="Fechado">Fechado</option></select>
+            <button class="btn-principal" onclick="salvar()">✅ SALVAR</button>
+            <div id="botoes-edicao" style="display:none; margin-top:10px; gap:8px; display:grid; grid-template-columns: 1fr 1fr;">
+                <button class="btn-tab" style="background:var(--danger); color:white;" onclick="excluirOrcamentoEdicao()">✕ EXCLUIR</button>
+                <button class="btn-tab" onclick="cancelarEdicao()">CANCELAR</button>
+            </div>
+        </div>
+    </section>
+
+    <section id="sec-financeiro" style="display:none">
+        <h2>Financeiro</h2>
+        <div class="card">
+            <h3>Lançar Saída</h3>
+            <select id="s-tipo" class="form-group"><option value="Produtos">Produtos</option><option value="Combustível">Combustível</option><option value="Marketing">Marketing</option><option value="Retirada">Retirada</option></select>
+            <input type="number" id="s-val" placeholder="Valor R$" class="form-group"><input type="text" id="s-obs" placeholder="Descrição" class="form-group"><input type="date" id="s-data" class="form-group">
+            <button class="btn-principal" style="background:var(--danger); width:100%" onclick="lancarS()">SALVAR SAÍDA</button>
+        </div>
+        <button class="btn-tab" style="width:100%; background:var(--primary); color:white; margin-bottom:15px;" onclick="gerarPDFFin()">📄 PDF FINANCEIRO</button>
+        <div class="scroll"><table><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Ações</th></tr></thead><tbody id="lista-fin"></tbody></table></div>
+    </section>
+
+    <section id="sec-backup" style="display:none">
+        <h2>Sistema e Segurança</h2>
+        <button class="btn-principal" onclick="exportar()">BAIXAR BACKUP</button>
+        <button class="btn-tab" style="width:100%; margin-top:15px; background:var(--warning); color:white;" onclick="mudarSenha()">🔐 ALTERAR SENHA ADMIN</button>
+    </section>
+</div>
+
+<script>
+    let db = JSON.parse(localStorage.getItem('clean_pro_v17_final')) || { servicos: [], clientes: [], financeiro: [], proxId: 1001, senha: "1234" };
+    let carrinho = [];
+    let isAdmin = true;
+
+    function togglePrivacidade() {
+        if(isAdmin) mudarModo(false);
+        else {
+            let pass = prompt("Senha de Admin:");
+            if(pass === db.senha) mudarModo(true);
+            else alert("Senha Incorreta!");
+        }
+    }
+
+    function mudarModo(admin) {
+        isAdmin = admin;
+        const btn = document.getElementById('btn-priv');
+        const dash = document.getElementById('dashboard-fin');
+        const tabFin = document.getElementById('tab-fin');
+        if(isAdmin) { btn.innerText = "👁️ Modo: Admin"; btn.style.background = "#475569"; dash.style.display = "grid"; tabFin.style.display = "block"; }
+        else { btn.innerText = "🔒 Modo: Colaborador"; btn.style.background = "#ef4444"; dash.style.display = "none"; tabFin.style.display = "none"; show('agenda'); }
+    }
+
+    function mudarSenha() {
+        let nova = prompt("Digite a nova senha numérica:");
+        if(nova) { db.senha = nova; persistir(); alert("Senha alterada!"); }
+    }
+
+    function show(id) {
+        document.querySelectorAll('section').forEach(s => s.style.display = 'none');
+        document.getElementById('sec-' + id).style.display = 'block';
+        if(id === 'novo') atualizarLista();
+        render();
+    }
+
+    // LOGICA BASE (PDF, CALCULO, SALVAR)
+    function gerarPDFOrcamento(id) {
+        const orc = db.servicos.find(s => s.id === id); if(!orc) return;
+        const { jsPDF } = window.jspdf; const doc = new jsPDF();
+        doc.text("ORÇAMENTO", 105, 20, {align: 'center'});
+        doc.text(`CLIENTE: ${orc.nome}`, 20, 40); doc.text(`ENDEREÇO: ${orc.end}`, 20, 50);
+        doc.autoTable({ head:[['Qtd','Serviço','Total']], body: orc.itens.map(i=>[i.q, i.s, "R$ "+i.total.toFixed(2)]), startY:60 });
+        doc.text(`TOTAL: R$ ${orc.total.toFixed(2)}`, 190, doc.lastAutoTable.finalY + 10, {align: 'right'});
+        doc.save(`Orcamento_${orc.nome}.pdf`);
+    }
+
+    function toggleTapete() { document.getElementById('box-tapete').style.display = document.getElementById('o-serv').value === 'Tapete (M²)' ? 'block' : 'none'; }
+    function calcT() { const l=parseFloat(document.getElementById('t-l').value)||0, c=parseFloat(document.getElementById('t-c').value)||0, v=parseFloat(document.getElementById('t-v').value)||0; if(l&&c&&v) document.getElementById('o-val').value=(l*c*v).toFixed(2); }
+    function addIt() { const s=document.getElementById('o-serv').value, q=parseInt(document.getElementById('o-qtd').value)||1, v=parseFloat(document.getElementById('o-val').value)||0; if(v>0){ carrinho.push({s,q,v,total:q*v}); renderCar(); } }
+    function renderCar() { const d=document.getElementById('div-carrinho'); let t=0; d.innerHTML=""; carrinho.forEach((i,x)=>{ t+=i.total; d.innerHTML+=`<div style="display:flex; justify-content:space-between; margin-bottom:5px"><span>${i.q}x ${i.s}</span><span>R$ ${i.total.toFixed(2)} <button onclick="carrinho.splice(${x},1);renderCar()" style="color:red; border:none; background:none">X</button></span></div>` }); document.getElementById('o-total').innerText=t.toFixed(2); }
+
+    function atualizarLista() { const sel = document.getElementById('sel-cliente'); sel.innerHTML = '<option value="">-- Escolha Cliente --</option>'; db.clientes.sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(c => sel.innerHTML += `<option value="${c.tel}">${c.nome}</option>`); }
+    function puxarDados() { const c = db.clientes.find(x => x.tel === document.getElementById('sel-cliente').value); if(c){ document.getElementById('o-nome').value=c.nome; document.getElementById('o-tel').value=c.tel; document.getElementById('o-end').value=c.end||""; } }
+
+    function salvar() {
+        const n=document.getElementById('o-nome').value, d=document.getElementById('o-data').value, eid=document.getElementById('edit-id').value;
+        if(!n||!d||carrinho.length===0) return alert("Erro nos campos!");
+        const total = carrinho.reduce((acc, i) => acc + i.total, 0);
+        const orc = { id: eid ? Number(eid) : Date.now(), nome:n, tel:document.getElementById('o-tel').value, end:document.getElementById('o-end').value, data:d, hora:document.getElementById('o-hora').value, obs:document.getElementById('o-obs').value, itens:[...carrinho], total:total, status:document.getElementById('o-status').value };
+        if(eid) { db.financeiro = db.financeiro.filter(f => f.desc !== `Serviço: ${n}`); db.servicos[db.servicos.findIndex(x => x.id === Number(eid))] = orc; } else { db.servicos.push(orc); }
+        if(!db.clientes.find(c => c.tel === orc.tel)) db.clientes.push({ idCli:db.proxId++, nome:n, tel:orc.tel, end:orc.end });
+        if(orc.status === 'Fechado') {
+            db.financeiro.push({ id: Date.now(), data:d, desc:`Serviço: ${n}`, valor:total });
+            const h = (orc.hora || "08:00").replace(/:/g, '') + "00";
+            window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('LIMPEZA: '+orc.nome)}&dates=${d.replace(/-/g,'')}T${h}/${d.replace(/-/g,'')}T${h}&location=${encodeURIComponent(orc.end)}`, '_blank');
+        }
+        persistir(); alert("✅ Salvo!"); cancelarEdicao(); show('agenda');
+    }
+
+    function editarOrc(id) {
+        const s = db.servicos.find(x => x.id === id); if(s) { show('novo'); document.getElementById('edit-id').value = s.id; document.getElementById('titulo-orc').innerText = "Editando Registro"; document.getElementById('botoes-edicao').style.display = "grid"; document.getElementById('o-nome').value = s.nome; document.getElementById('o-tel').value = s.tel; document.getElementById('o-end').value = s.end; document.getElementById('o-data').value = s.data; document.getElementById('o-hora').value = s.hora; document.getElementById('o-obs').value = s.obs; document.getElementById('o-status').value = s.status; carrinho = [...s.itens]; renderCar(); }
+    }
+
+    function cancelarEdicao() { document.getElementById('edit-id').value = ""; document.getElementById('titulo-orc').innerText = "Orçamento / Agendamento"; document.getElementById('botoes-edicao').style.display = "none"; carrinho = []; renderCar(); document.querySelectorAll('#sec-novo input, #sec-novo textarea').forEach(i => i.value=""); }
+
+    function excluirOrcamentoEdicao() { const id = Number(document.getElementById('edit-id').value); if(id && confirm("Excluir?")) { const orc = db.servicos.find(s => s.id === id); if(orc && orc.status === 'Fechado') db.financeiro = db.financeiro.filter(f => f.desc !== `Serviço: ${orc.nome}`); db.servicos = db.servicos.filter(s => s.id !== id); persistir(); cancelarEdicao(); } }
+
+    function render() {
+        const hj = new Date().toISOString().split('T')[0], mes = new Date().getMonth();
+        let dia=0, mtot=0;
+        const lF = document.getElementById('lista-fin'); lF.innerHTML = '';
+        db.financeiro.sort((a,b)=>new Date(b.data)-new Date(a.data)).forEach(f => {
+            if(f.data === hj) dia += f.valor; if(new Date(f.data + 'T00:00:00').getMonth() === mes) mtot += f.valor;
+            lF.innerHTML += `<tr><td>${f.data}</td><td>${f.desc}</td><td style="color:${f.valor>0?'green':'red'}">${f.valor.toFixed(2)}</td><td><button class="btn-acao btn-del" onclick="delFin(${f.id})">✕</button></td></tr>`;
+        });
+        document.getElementById('res-dia').innerText=`R$ ${dia.toFixed(2)}`; document.getElementById('res-mes').innerText=`R$ ${mtot.toFixed(2)}`;
+        const lA = document.getElementById('lista-agenda'); lA.innerHTML = '';
+        db.servicos.filter(s=>s.status==='Fechado').sort((a,b)=>new Date(a.data)-new Date(b.data)).forEach(s => { lA.innerHTML += `<tr><td>${s.data}</td><td><b>${s.nome}</b><br><small style="color:var(--accent)">${s.end}</small></td><td>${s.total.toFixed(2)}</td><td><button class="btn-acao btn-edit" onclick="editarOrc(${s.id})">✎</button></td></tr>`; });
+        const lC = document.getElementById('lista-clientes'); lC.innerHTML = '';
+        db.clientes.filter(c => c.nome.toLowerCase().includes(document.getElementById('busca-cli').value.toLowerCase())).forEach(c => {
+            const orcs = db.servicos.filter(s => s.tel === c.tel); const uS = orcs[orcs.length-1] || { status: 'Novo', id: 0 };
+            const bC = uS.status === 'Fechado' ? 'st-fechado' : (uS.status === 'Enviado' ? 'st-enviado' : 'st-aberto');
+            lC.innerHTML += `<tr><td><b>${c.nome}</b><br><span class="badge ${bC}">${uS.status}</span></td><td><button class="btn-acao btn-wapp" onclick="window.open('https://wa.me/55${c.tel.replace(/\D/g,'')}')">📱</button>${uS.id !== 0 ? `<button class="btn-acao btn-pdf" onclick="gerarPDFOrcamento(${uS.id})">📄</button><button class="btn-acao btn-edit" onclick="editarOrc(${uS.id})">✎</button>` : ''}<button class="btn-acao btn-del" onclick="delCli('${c.tel}')">✕</button></td></tr>`;
+        });
+    }
+
+    function abrirCadastroCliente() { const n = prompt("Nome:"); const t = prompt("Zap:"); const e = prompt("End:"); if(n && t) { if(!db.clientes.find(c => c.tel === t)) { db.clientes.push({ idCli: db.proxId++, nome: n, tel: t, end: e }); persistir(); } } }
+    function persistir() { localStorage.setItem('clean_pro_v17_final', JSON.stringify(db)); render(); }
+    function delFin(id) { if(confirm("Apagar?")) { db.financeiro=db.financeiro.filter(f=>f.id!==id); persistir(); } }
+    function delCli(t) { if(confirm("Apagar cliente?")) { db.clientes=db.clientes.filter(c=>c.tel!==t); db.servicos=db.servicos.filter(s=>s.tel!==t); persistir(); } }
+    function exportar() { const a=document.createElement('a'); a.href="data:text/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(db)); a.download="backup.json"; a.click(); }
+    function lancarS() { const v = parseFloat(document.getElementById('s-val').value), d = document.getElementById('s-data').value; if(v && d) { db.financeiro.push({ id: Date.now(), data: d, desc: `[${document.getElementById('s-tipo').value}] ${document.getElementById('s-obs').value}`, valor: v * -1 }); persistir(); alert("Salvo!"); } }
+    function gerarPDFFin() { const { jsPDF } = window.jspdf; const doc = new jsPDF(); doc.text("Financeiro", 14, 15); doc.autoTable({ head:[['Data','Desc','Valor']], body: db.financeiro.map(f => [f.data, f.desc, f.valor.toFixed(2)]), startY:20 }); doc.save("financeiro.pdf"); }
+    show('agenda');
+</script>
+</body>
+</html>
